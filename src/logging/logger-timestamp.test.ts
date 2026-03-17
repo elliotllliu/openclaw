@@ -41,4 +41,27 @@ describe("logger timestamp format", () => {
     expect(lastLine.time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/);
     expect(lastLine.time).not.toMatch(/Z$/);
   });
+
+  it("aligns _meta.date with the local-time time field", () => {
+    setLoggerOverride({ level: "info", file: logPath });
+    const logger = getLogger();
+
+    // Write a log entry
+    logger.info("test-meta-date-alignment");
+
+    // Read the log file
+    const content = fs.readFileSync(logPath, "utf8");
+    const lines = content.trim().split("\n");
+    const lastLine = JSON.parse(lines[lines.length - 1]);
+
+    // _meta.date should match the local-time time field format,
+    // not the default UTC ISO string
+    if (lastLine._meta?.date) {
+      expect(lastLine._meta.date).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/,
+      );
+      expect(lastLine._meta.date).not.toMatch(/Z$/);
+      expect(lastLine._meta.date).toBe(lastLine.time);
+    }
+  });
 });
