@@ -179,8 +179,19 @@ function buildLogger(settings: ResolvedSettings): TsLogger<LogObj> {
 
   logger.attachTransport((logObj: LogObj) => {
     try {
-      const time = formatLocalIsoWithOffset(logObj.date ?? new Date());
-      const line = JSON.stringify({ ...logObj, time });
+      const now = logObj.date ?? new Date();
+      const time = formatLocalIsoWithOffset(now);
+      // Align _meta.date with the local-time `time` field so log consumers
+      // see a single consistent timestamp regardless of which field they read.
+      const patched = { ...logObj, time };
+      if (
+        patched._meta &&
+        typeof patched._meta === "object" &&
+        "date" in patched._meta
+      ) {
+        patched._meta = { ...patched._meta, date: time };
+      }
+      const line = JSON.stringify(patched);
       const payload = `${line}\n`;
       const payloadBytes = Buffer.byteLength(payload, "utf8");
       const nextBytes = currentFileBytes + payloadBytes;
